@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Star Stats for some of Basketball's greatest players</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            text-align: center;
+        }
+        .chart {
+            display: none;
+            position: relative;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .bar {
+            cursor: pointer;
+        }
+        .toggle-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: white;
+            border: solid;
+            border-width: 1px;
+            border-radius: 5px;
+            padding: 10px;
+            opacity: 0;
+        }
+        .annotation-group {
+            pointer-events: none;
+        }
+        .annotation text {
+            fill: black;
+        }
+        .annotation-note-bg {
+            fill: rgba(255, 255, 255, 0.8);
+        }
+        .annotation-note-title {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="page1" class="chart">
+            <h1>All Star Stats for some of Basketball's greatest players</h1>
+            <p>Lebron James, Kobe Bryant, and Michael Jordan</p>
+            <div class="buttons">
+                <button onclick="showPage(2)">Next</button>
+            </div>
+        </div>
+        <div id="page2" class="chart">
+            <h1>Points Comparison in All-Star Games</h1>
+            <svg id="pointsChart" width="800" height="500"></svg>
+            <div class="buttons">
+                <button onclick="showPage(1)">Previous</button>
+                <button onclick="showPage(3)">Next</button>
+            </div>
+        </div>
+        <div id="page3" class="chart">
+            <h1>Shooting Percentage in All-Star Games</h1>
+            <svg id="threePointChart" width="800" height="500"></svg>
+            <div class="buttons">
+                <button onclick="showPage(2)">Previous</button>
+                <button onclick="showPage(4)">Next</button>
+            </div>
+        </div>
+        <div id="page4" class="chart">
+            <h1>Total Minutes Played in All-Star Games</h1>
+            <svg id="minutesChart" width="800" height="500"></svg>
+            <div class="buttons">
+                <button onclick="showPage(3)">Previous</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const playerStats = [
+    { 
+        Player: 'Lebron James', 
+        Points: 291, 
+        ThreePointPercentage: 0.333, 
+        FGPercentage: 0.543, 
+        MinutesPlayed: 340, 
+        Points2s: 200, 
+        Points3s: 60, 
+        FreeThrows: 31 
+    },
+    { 
+        Player: 'Kobe Bryant', 
+        Points: 280, 
+        ThreePointPercentage: 0.286, 
+        FGPercentage: 0.495, 
+        MinutesPlayed: 310, 
+        Points2s: 190, 
+        Points3s: 70, 
+        FreeThrows: 20 
+    },
+    { 
+        Player: 'Michael Jordan', 
+        Points: 262, 
+        ThreePointPercentage: 0.375, 
+        FGPercentage: 0.472, 
+        MinutesPlayed: 320, 
+        Points2s: 180, 
+        Points3s: 50, 
+        FreeThrows: 32 
+    }
+];
+
+function showPage(pageNumber) {
+    document.querySelectorAll('.chart').forEach(chart => chart.style.display = 'none');
+    document.getElementById(`page${pageNumber}`).style.display = 'block';
+}
+
+showPage(1);
+
+const pointsChart = d3.select('#pointsChart');
+const pointsMargin = { top: 40, right: 120, bottom: 50, left: 60 };
+const pointsWidth = pointsChart.attr('width') - pointsMargin.left - pointsMargin.right;
+const pointsHeight = pointsChart.attr('height') - pointsMargin.top - pointsMargin.bottom;
+const pointsSvg = pointsChart.append('g')
+    .attr('transform', `translate(${pointsMargin.left},${pointsMargin.top})`);
+
+const pointsX = d3.scaleBand()
+    .domain(playerStats.map(d => d.Player))
+    .range([0, pointsWidth])
+    .padding(0.1);
+
+const pointsY = d3.scaleLinear()
+    .domain([0, d3.max(playerStats, d => d.Points)])
+    .nice()
+    .range([pointsHeight, 0]);
+
+pointsSvg.append('g')
+    .attr('class', 'x-axis')
+    .attr('transform', `translate(0,${pointsHeight})`)
+    .call(d3.axisBottom(pointsX));
+
+pointsSvg.append('g')
+    .attr('class', 'y-axis')
+    .call(d3.axisLeft(pointsY));
+
+// Add instructional text
+pointsSvg.append("text")
+    .attr("x", pointsWidth / 2)
+    .attr("y", -20)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .style("fill", "#333")
+    .text("Hit Toggle Point Breakdown to see a breakdown of points and click the squares in the legend.");
+
+pointsSvg.append("text")
+    .attr("x", pointsWidth / 2)
+    .attr("y", pointsHeight + 40)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .style("fill", "#333")
+    .text("Note: Lebron has scored the most points in an all star game. Hover over to see the total points");
+
+const barsGroup = pointsSvg.append('g').attr('class', 'bars');
+
+const colorScale = d3.scaleOrdinal()
+    .domain(['Total Points', '2 Points', '3 Points', 'Free Throws'])
+    .range(['#4e79a7', '#59a14f', '#f28e2c', '#e15759']);
+
+const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+function updateBars(detailed = false) {
+    if (!detailed) {
+        barsGroup.selectAll('.sub-bar').remove();
+        barsGroup.selectAll('.bar')
+            .data(playerStats)
+            .join('rect')
+            .attr('class', 'bar')
+            .attr('x', d => pointsX(d.Player))
+            .attr('y', d => pointsY(d.Points))
+            .attr('width', pointsX.bandwidth())
+            .attr('height', d => pointsHeight - pointsY(d.Points))
+            .attr('fill', colorScale('Total Points'))
+            .on("mouseover", function(event, d) {
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                tooltip.html(`Total Points: ${d.Points}`)
+                    .style("left", (event.pageX) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function() {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
+
+        pointsSvg.select(".annotation-group").style("opacity", 1);
+    } else {
+        updateDetailedBars();
+        pointsSvg.select(".annotation-group").style("opacity", 0);
+    }
+}
+
+function updateDetailedBars() {
+    const visibleTypes = keyData
+        .filter(item => item.label !== 'Total Points' && 
+                        colorKey.select(`rect[fill="${item.color}"]`).attr('fill-opacity') != 0.2)
+        .map(item => item.label);
+
+    if (visibleTypes.length === 0) {
+        visibleTypes.push('2 Points', '3 Points', 'Free Throws');
+        colorKey.selectAll('.legend-item')
+            .attr('fill-opacity', 1);
+    }
+
+    barsGroup.selectAll('.bar, .sub-bar').remove();
+
+    const stackedData = playerStats.map(player => {
+        let y0 = 0;
+        return visibleTypes.map(type => {
+            const value = type === '2 Points' ? player.Points2s : 
+                          type === '3 Points' ? player.Points3s : player.FreeThrows;
+            const y1 = y0 + value;
+            const result = {Player: player.Player, type: type, y0: y0, y1: y1, value: value};
+            y0 = y1;
+            return result;
+        });
+    });
+
+    const playerGroups = barsGroup.selectAll('.player-group')
+        .data(stackedData)
+        .enter().append('g')
+        .attr('class', 'player-group')
+        .attr('transform', (d, i) => `translate(${pointsX(playerStats[i].Player)},0)`);
+
+    playerGroups.selectAll('rect')
+        .data(d => d)
+        .enter().append('rect')
+        .attr('class', 'sub-bar')
+        .attr('y', d => pointsY(d.y1))
+        .attr('height', d => pointsY(d.y0) - pointsY(d.y1))
+        .attr('width', pointsX.bandwidth())
+        .attr('fill', d => colorScale(d.type))
+        .on("mouseover", function(event, d) {
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", .9);
+            tooltip.html(`${d.type}: ${d.value}`)
+                .style("left", (event.pageX) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function() {
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
+}
+
+updateBars();
+
+const colorKey = pointsSvg.append('g')
+    .attr('transform', `translate(${pointsWidth + 10}, 0)`);
+
+const keyData = [
+    { label: 'Total Points', color: colorScale('Total Points') },
+    { label: '2 Points', color: colorScale('2 Points') },
+    { label: '3 Points', color: colorScale('3 Points') },
+    { label: 'Free Throws', color: colorScale('Free Throws') }
+];
+
+colorKey.selectAll('rect')
+    .data(keyData)
+    .enter().append('rect')
+    .attr('x', 0)
+    .attr('y', (d, i) => i * 25)
+    .attr('width', 20)
+    .attr('height', 20)
+    .attr('fill', d => d.color)
+    .attr('class', 'legend-item')
+    .style('cursor', 'pointer')
+    .on('click', toggleLegendItem);
+
+colorKey.selectAll('text')
+    .data(keyData)
+    .enter().append('text')
+    .attr('x', 25)
+    .attr('y', (d, i) => i * 25 + 15)
+    .text(d => d.label);
+
+function toggleLegendItem(event, d) {
+    if (isDetailed && d.label !== 'Total Points') {
+        const isHidden = this.getAttribute('fill-opacity') == 0.2;
+        d3.select(this).attr('fill-opacity', isHidden ? 1 : 0.2);
+        updateDetailedBars();
+    }
+}
+
+let isDetailed = false;
+function togglePointBreakdown() {
+    isDetailed = !isDetailed;
+    if (isDetailed) {
+        updateDetailedBars();
+        colorKey.selectAll('rect, text').style('opacity', 1);
+        colorKey.select('rect').filter(d => d.label === 'Total Points')
+            .attr('fill-opacity', 0.2);
+        pointsSvg.select(".annotation-group").style("opacity", 0);
+    } else {
+        updateBars(false);
+        colorKey.selectAll('rect, text')
+            .style('opacity', d => d.label === 'Total Points' ? 1 : 0);
+        pointsSvg.select(".annotation-group").style("opacity", 1);
+    }
+    
+    colorKey.selectAll('.legend-item')
+        .attr('fill-opacity', d => d.label === 'Total Points' && isDetailed ? 0.2 : 1);
+}
+
+d3.select('#page2')
+    .append('button')
+    .attr('class', 'toggle-button')
+    .text('Toggle Point Breakdown')
+    .on('click', togglePointBreakdown);
+
+const annotations = [{
+    note: {
+        label: "Lebron James scored the most points in All-Star games",
+        title: "Highest Scorer",
+        wrap: 150
+    },
+    x: pointsX('Lebron James') + pointsX.bandwidth() / 2,
+    y: pointsY(291),
+    dy: -70,
+    dx: 50
+}];
+
+const makeAnnotations = d3.annotation()
+    .type(d3.annotationLabel)
+    .annotations(annotations);
+
+pointsSvg.append("g")
+    .attr("class", "annotation-group")
+    .call(makeAnnotations);
+
+    const shootingChart = d3.select('#threePointChart');
+    const shootingMargin = { top: 40, right: 120, bottom: 50, left: 60 };
+    const shootingWidth = shootingChart.attr('width') - shootingMargin.left - shootingMargin.right;
+    const shootingHeight = shootingChart.attr('height') - shootingMargin.top - shootingMargin.bottom;
+    const shootingSvg = shootingChart.append('g')
+        .attr('transform', `translate(${shootingMargin.left},${shootingMargin.top})`);
+
+    const shootingX = d3.scaleBand()
+        .domain(playerStats.map(d => d.Player))
+        .range([0, shootingWidth])
+        .padding(0.1);
+
+    const subgroupX = d3.scaleBand()
+        .domain(['FG%', '3P%'])
+        .range([0, shootingX.bandwidth()])
+        .padding(0.05);
+
+    const shootingY = d3.scaleLinear()
+        .domain([0, 1]) 
+        .nice()
+        .range([shootingHeight, 0]);
+
+    shootingSvg.append('g')
+        .attr('class', 'x-axis')
+        .attr('transform', `translate(0,${shootingHeight})`)
+        .call(d3.axisBottom(shootingX));
+
+    shootingSvg.append('g')
+        .attr('class', 'y-axis')
+        .call(d3.axisLeft(shootingY).tickFormat(d3.format('.0%')));
+
+    shootingSvg.append("text")
+        .attr("x", shootingWidth / 2)
+        .attr("y", shootingHeight + 40)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "#333")
+        .text("Note: Lebron has the best shooting percentages for combined field goals. Hover over the bars to see the actual shooting percentage.");
+
+    const shootingColorScale = d3.scaleOrdinal()
+        .domain(['FG%', '3P%'])
+        .range(['#4e79a7', '#f28e2c']);
+
+    const shootingGroups = shootingSvg.selectAll('.shooting-group')
+        .data(playerStats)
+        .enter().append('g')
+        .attr('class', 'shooting-group')
+        .attr('transform', d => `translate(${shootingX(d.Player)},0)`);
+
+    shootingGroups.append('rect')
+        .attr('class', 'fg-bar')
+        .attr('x', d => subgroupX('FG%'))
+        .attr('y', d => shootingY(d.FGPercentage))
+        .attr('width', subgroupX.bandwidth())
+        .attr('height', d => shootingHeight - shootingY(d.FGPercentage))
+        .attr('fill', shootingColorScale('FG%'))
+        .on("mouseover", function(event, d) {
+            tooltip.transition()
+                .duration(200)
+                .style("opacity", .9);
+            tooltip.html(`FG%: ${(d.FGPercentage * 100).toFixed(1)}%`)
+                .style("left", (event.pageX) + "px")
+                .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", function() {
+            tooltip.transition()
+                .duration(500)
+                .style("opacity", 0);
+        });
+
+    function showThreePointPercentages() {
+        shootingGroups.append('rect')
+            .attr('class', 'threep-bar')
+            .attr('x', d => subgroupX('3P%'))
+            .attr('y', d => shootingY(d.ThreePointPercentage))
+            .attr('width', subgroupX.bandwidth())
+            .attr('height', d => shootingHeight - shootingY(d.ThreePointPercentage))
+            .attr('fill', shootingColorScale('3P%'))
+            .on("mouseover", function(event, d) {
+                tooltip.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                tooltip.html(`3P%: ${(d.ThreePointPercentage * 100).toFixed(1)}%`)
+                    .style("left", (event.pageX) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function() {
+                tooltip.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+            });
+
+        d3.select('#show3PButton').remove();
+    }
+
+    d3.select('#page3')
+        .append('button')
+        .attr('id', 'show3PButton')
+        .attr('class', 'toggle-button')
+        .text('See Three Point Percentages')
+        .on('click', showThreePointPercentages);
+
+    const shootingLegend = shootingSvg.append('g')
+        .attr('transform', `translate(${shootingWidth + 10}, 0)`);
+
+    ['FG%', '3P%'].forEach((key, i) => {
+        shootingLegend.append('rect')
+            .attr('x', 0)
+            .attr('y', i * 25)
+            .attr('width', 20)
+            .attr('height', 20)
+            .attr('fill', shootingColorScale(key));
+
+        shootingLegend.append('text')
+            .attr('x', 25)
+            .attr('y', i * 25 + 15)
+            .text(key);
+    });
+
+    const minutesChart = d3.select('#minutesChart');
+    const minutesSvg = minutesChart.append('g')
+        .attr('transform', `translate(${pointsMargin.left},${pointsMargin.top})`);
+    
+    const minutesY = d3.scaleLinear()
+        .domain([0, d3.max(playerStats, d => d.MinutesPlayed)])
+        .nice()
+        .range([pointsHeight, 0]);
+    
+    minutesSvg.append('g')
+        .attr('class', 'x-axis')
+        .attr('transform', `translate(0,${pointsHeight})`)
+        .call(d3.axisBottom(pointsX));
+    
+    minutesSvg.append('g')
+        .attr('class', 'y-axis')
+        .call(d3.axisLeft(minutesY));
+    
+    minutesSvg.selectAll('.bar')
+        .data(playerStats)
+        .enter().append('rect')
+        .attr('class', 'bar')
+        .attr('x', d => pointsX(d.Player))
+        .attr('y', d => minutesY(d.MinutesPlayed))
+        .attr('width', pointsX.bandwidth())
+        .attr('height', d => pointsHeight - minutesY(d.MinutesPlayed))
+        .attr('fill', 'steelblue');
+
+    minutesSvg.append("text")
+        .attr("x", pointsWidth / 2)
+        .attr("y", pointsHeight + 40)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("fill", "#333")
+        .text("Note: Lebron has also played the most minutes");
+</script>
+
+</body>
+</html>
